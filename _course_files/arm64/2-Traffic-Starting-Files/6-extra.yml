@@ -1,0 +1,67 @@
+# NOTE: for testing purposes
+# while true; do curl http://localhost:30080/api/vehicles/driver/City%20Truck; echo; sleep 0.5; done
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: staff-service-risky-version
+spec:
+  selector:
+    matchLabels:
+      app: staff-service
+  replicas: 1
+  template: # template for the pods
+    metadata:
+      labels:
+        app: staff-service
+        version: risky
+    spec:
+      containers:
+        - name: staff-service
+          image: richardchesterwood/istio-fleetman-staff-service:6-arm64
+          # image: richardchesterwood/istio-fleetman-staff-service:6-arm64
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: production-microservice
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  labels:
+    kiali_wizard: weighted_routing
+  name: fleetman-staff-service
+  namespace: default
+spec:
+  hosts:
+    - fleetman-staff-service.default.svc.cluster.local
+  http:
+    - route:
+        - destination:
+            host: fleetman-staff-service.default.svc.cluster.local
+            subset: safe
+          weight: 0
+        - destination:
+            host: fleetman-staff-service.default.svc.cluster.local
+            subset: risky
+          weight: 100
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  labels:
+    kiali_wizard: weighted_routing
+  name: fleetman-staff-service
+  namespace: default
+spec:
+  host: fleetman-staff-service.default.svc.cluster.local
+  subsets:
+    - labels:
+        version: safe
+      name: safe
+    - labels:
+        version: risky
+      name: risky

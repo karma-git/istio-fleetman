@@ -1,0 +1,64 @@
+# --------------------------------------------------------------------------------------------------------------
+# Configure the Helm repository:
+# helm repo add istio https://istio-release.storage.googleapis.com/charts
+# helm repo update
+
+# --------------------------------------------------------------------------------------------------------------
+# Install helm release
+# helm install istio-base istio/base -n istio-system --set defaultRevision=default
+
+# Where
+# helm install <release> <chart> --namespace <namespace> --create-namespace [--set <other_parameters>]
+
+
+repositories:
+  - name: istio
+    url: https://istio-release.storage.googleapis.com/charts
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+
+# https://helmfile.readthedocs.io/en/latest/#configuration
+helmDefaults:
+  kubeContext: docker-desktop
+  createNamespace: true
+  timeout: 900
+  wait: true
+  atomic: true
+
+releases:
+  # ref: https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/values.yaml
+  # downstream grafana chart https://github.com/grafana/helm-charts/blob/main/charts/grafana/values.yaml
+  # NOTE: Grafana Alertmanager Prometheus
+  - name: gap-stack
+    chart: prometheus-community/kube-prometheus-stack
+    namespace: kube-monitoring
+    version: 58.4.0
+    values:
+      - values/gap-stack.yml
+
+  # ref: https://github.com/istio/istio/tree/release-1.21.2/manifests/charts/base
+  # NOTE: installing CRDs
+  - name: istio-base
+    chart: istio/base
+    namespace: kube-istio-system
+    version: 1.21.2
+    values:
+      - global:
+          istioNamespace: kube-istio-system
+
+  # ref: https://github.com/istio/istio/tree/1.21.2/manifests/charts/istio-control/istio-discovery
+  # NOTE: installing istiod (daemon)
+  - name: istio-istiod
+    chart: istio/istiod
+    namespace: kube-istio-system
+    version: 1.21.2
+    values:
+      - global:
+          istioNamespace: kube-istio-system
+
+  # ref: https://github.com/istio/istio/tree/1.21.2/manifests/charts/istio-control/istio-discovery
+  # NOTE: installing ingress aka envoy edge proxy
+  - name: istio-default-gateway
+    chart: istio/gateway
+    namespace: kube-istio-gateway
+    version: 1.21.2

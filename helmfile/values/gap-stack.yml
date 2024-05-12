@@ -1,0 +1,5 @@
+fullnameOverride: gap-stack
+
+grafana:
+  adminUser: admin
+  adminPassword: gap
